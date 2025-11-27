@@ -14,9 +14,8 @@
    [rewrite-clj.zip :as z]))
 
 
-;; Until Clojure 1.12 is released and included in Babashka we need to override this in order to
-;; support babashka.deps/add-deps which is implemented via
-(def required-clojure-version "1.12.0-alpha4")
+;; Optionally pin Clojure version in order to supported alpha features
+(def required-clojure-version nil #_"1.12.3")
 
 
 (defn print-deps-edn []
@@ -24,11 +23,13 @@
     ;; Respect the order output of `bb print-deps`
     (-> bb-deps-str
         (z/of-string)
-        (z/postwalk (fn select [zloc] (= 'org.clojure/clojure (z/sexpr zloc)))
-                    (fn visit [zloc] (-> zloc
-                                        (z/right)
-                                        (z/edit assoc :mvn/version required-clojure-version)
-                                        (z/left))))
+        (cond->
+          required-clojure-version
+          (z/postwalk (fn select [zloc] (= 'org.clojure/clojure (z/sexpr zloc)))
+                      (fn visit [zloc] (-> zloc
+                                          (z/right)
+                                          (z/edit assoc :mvn/version required-clojure-version)
+                                          (z/left)))))
         (z/string)
         (str/replace (str/re-quote-replacement "{:deps")
                      (str
